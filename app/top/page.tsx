@@ -10,7 +10,7 @@ import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { Livepeer } from "@livepeer/ai";
 import { Player } from '@remotion/player';
-import { AbsoluteFill, Img, Sequence, Audio, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Img, Sequence, Audio, useVideoConfig } from 'remotion';
 
 interface Segment {
   id: number;
