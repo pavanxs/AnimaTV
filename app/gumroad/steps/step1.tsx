@@ -1,7 +1,7 @@
 // File Purpose: First step of video creation process - collecting video details and format
 // Functionality: Form that captures video title, description, and preferred aspect ratio with visual indicators
 
-import { Card } from "@/components/ui/card"
+
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"

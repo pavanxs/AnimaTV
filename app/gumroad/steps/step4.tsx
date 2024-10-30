@@ -222,7 +222,7 @@ export default function Step4Component({
       console.log('~~~~~Pop~~~~~~ Transcription completed:', data)
 
       // Process segments and generate image prompts
-      const segments = data.segments.map((segment: any) => ({
+      const segments = data.segments.map((segment: { text: string; start: number; end: number }) => ({
         text: segment.text,
         start: segment.start,
         end: segment.end

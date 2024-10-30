@@ -1,7 +1,6 @@
 // File Purpose: Second step of video creation process - theme selection
 // Functionality: Displays a grid of art style options with visual previews and descriptions
 
-import { Card } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"

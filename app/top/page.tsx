@@ -41,13 +41,12 @@ const livepeerAI = new Livepeer({
  * @param audioUrl - URL of the recorded audio file
  */
 const VideoComposition = ({ segments, audioUrl }: { segments: Segment[], audioUrl: string }) => {
-  const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
   return (
     <AbsoluteFill>
       <Audio src={audioUrl} />
-      {segments.map((segment, index) => (
+      {segments.map((segment) => (
         <Sequence from={segment.start * fps} durationInFrames={(segment.end - segment.start) * fps} key={segment.id}>
           <AbsoluteFill>
             {segment.imageUrl && <Img src={segment.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
@@ -175,12 +174,12 @@ export default function TranscribePage() {
     setIsGeneratingPrompts(true);
     const updatedSegments = [...transcriptionData.segments];
     
-    for (let segment of updatedSegments) {
+    for (const segment of updatedSegments) {
       try {
         const response = await axios.post(
           'https://api.openai.com/v1/chat/completions',
           {
-            model: "gpt-4",
+            model: "gpt-4o-mini",
             messages: [
               {
                 role: "system",
@@ -220,14 +219,14 @@ export default function TranscribePage() {
     setIsGeneratingImages(true);
     const updatedSegments = [...segments];
 
-    for (let segment of updatedSegments) {
+    for (const segment of updatedSegments) {
       if (segment.imagePrompt) {
         try {
           const result = await livepeerAI.generate.textToImage({
             prompt: segment.imagePrompt,
-            modelId: "black-forest-labs/FLUX.1-dev",
-            width: 512,
-            height: 512,
+            modelId: "SG161222/RealVisXL_V4.0_Lightning",
+            width: 1600,
+            height: 600,
           });
 
           if (result.imageResponse?.images && result.imageResponse.images.length > 0) {
