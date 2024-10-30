@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 export default function Step3Component({ 
   onSubmit 
 }: { 
-  onSubmit: (e: React.FormEvent, audioUrl: string, audioBlob: Blob) => void 
+  onSubmit: (e: React.FormEvent<Element>, audioUrl: string, audioBlob: Blob) => void 
 }) {
   // State for recording
   const [isRecording, setIsRecording] = useState(false)

@@ -16,7 +16,44 @@ import {
 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 
-export default function Step5Component() {
+// Add interfaces at the top
+interface ImageGeneration {
+  url: string
+  seed: number
+  nsfw: boolean
+}
+
+interface ImagePrompt {
+  segment: string
+  prompt: string
+  timestamp: {
+    start: number
+    end: number
+  }
+  generatedImage?: ImageGeneration
+}
+
+interface TranscriptionResponse {
+  text: string
+  timestamps: Array<{
+    text: string
+    start: number
+    end: number
+  }>
+}
+
+interface Step5Props {
+  transcription: TranscriptionResponse | null
+  imagePrompts: ImagePrompt[]
+  audioURL: string
+  audioBlob: Blob
+}
+
+export default function Step5Component({
+  transcription,
+  imagePrompts,
+  audioURL
+}: Step5Props) {
   const [isLivepeerUploading, setIsLivepeerUploading] = useState(false)
   const [isZoraMinting, setIsZoraMinting] = useState(false)
   const [livepeerSuccess, setLivepeerSuccess] = useState(false)
@@ -41,7 +78,86 @@ export default function Step5Component() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-6">
+    <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
+      {/* Generated Content Summary */}
+      <Card className="p-6">
+        <h2 className="text-xl font-bold mb-4">Generated Content Summary</h2>
+        
+        {/* Audio Preview */}
+        <div className="mb-6">
+          <h3 className="font-semibold mb-2">Original Audio Narration</h3>
+          <audio controls className="w-full">
+            <source src={audioURL} type="audio/wav" />
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+
+        {/* Transcription */}
+        {transcription && (
+          <div className="mb-6">
+            <h3 className="font-semibold mb-2">Transcription</h3>
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm">{transcription.text}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Generated Images and Prompts */}
+        {imagePrompts.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="font-semibold">Generated Scenes</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {imagePrompts.map((prompt, index) => {
+                console.log(`Rendering prompt ${index}:`, prompt)
+                console.log(`Generated image data:`, prompt.generatedImage)
+
+                return (
+                  <Card key={index} className="p-4">
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="font-medium text-sm">Scene {index + 1}</h4>
+                        <p className="text-xs text-muted-foreground">
+                          {prompt.timestamp.start}s - {prompt.timestamp.end}s
+                        </p>
+                      </div>
+                      
+                      {prompt.generatedImage?.url ? (
+                        <div className="aspect-square relative rounded-lg overflow-hidden bg-muted">
+                          <img
+                            src={prompt.generatedImage.url}
+                            alt={`Scene ${index + 1}`}
+                            className="object-cover w-full h-full"
+                            onError={(e) => {
+                              console.error(`Error loading image ${index}:`, e)
+                              e.currentTarget.src = '/placeholder.png'
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="aspect-square flex items-center justify-center bg-muted rounded-lg">
+                          <p className="text-sm text-muted-foreground">No image available</p>
+                        </div>
+                      )}
+                      
+                      <div>
+                        <h5 className="text-xs font-medium">Original Text</h5>
+                        <p className="text-xs text-muted-foreground">{prompt.segment}</p>
+                      </div>
+                      
+                      <div>
+                        <h5 className="text-xs font-medium">Generated Prompt</h5>
+                        <p className="text-xs text-muted-foreground">{prompt.prompt}</p>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Original Video Player and Actions Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Video Player Section */}
         <div className="lg:col-span-2">

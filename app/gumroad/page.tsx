@@ -18,6 +18,14 @@ export default function Component() {
   // Add state for audio data
   const [audioData, setAudioData] = useState<{url: string, blob: Blob} | null>(null)
 
+  // Update the state to store step4 data
+  const [step4Data, setStep4Data] = useState<{
+    transcription: TranscriptionResponse | null,
+    imagePrompts: ImagePrompt[],
+    audioURL: string,
+    audioBlob: Blob
+  } | null>(null)
+
   // Define the steps data for easy maintenance
   const steps = [
     {
@@ -47,9 +55,14 @@ export default function Component() {
     }
   ]
 
-  // Handle next step navigation
-  const handleNextStep = (e: React.FormEvent) => {
-    e.preventDefault()
+  // Update the handleNextStep function to handle both form submissions and direct transitions
+  const handleNextStep = (e?: React.FormEvent) => {
+    // Prevent form submission if event exists
+    if (e) {
+      e.preventDefault()
+    }
+    
+    console.log('Moving to next step:', currentStep + 1)
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1)
     }
@@ -65,6 +78,7 @@ export default function Component() {
       case 3:
         return <Step3Component 
           onSubmit={(e, audioUrl: string, audioBlob: Blob) => {
+            console.log('Audio data received:', { audioUrl, audioBlob })
             setAudioData({ url: audioUrl, blob: audioBlob })
             handleNextStep(e)
           }} 
@@ -72,15 +86,25 @@ export default function Component() {
       case 4:
         return audioData ? (
           <Step4Component 
-            onComplete={handleNextStep}
+            onComplete={(data) => {
+              console.log('Step 4 complete, saving data:', data)
+              setStep4Data(data)
+            }}
             audioURL={audioData.url}
             audioBlob={audioData.blob}
           />
         ) : null
       case 5:
-        return <Step5Component />
+        return step4Data ? (
+          <Step5Component 
+            transcription={step4Data.transcription}
+            imagePrompts={step4Data.imagePrompts}
+            audioURL={step4Data.audioURL}
+            audioBlob={step4Data.audioBlob}
+          />
+        ) : <div>Invalid data</div>
       default:
-        return null
+        return <div>Invalid data</div>
     }
   }
 

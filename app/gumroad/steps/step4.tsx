@@ -6,7 +6,14 @@
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Loader2, Wand2, ImageIcon, Film, AudioLines, Check } from "lucide-react"
+import { Loader2, Wand2, ImageIcon, Film, AudioLines, Check, ArrowUpRight } from "lucide-react"
+import { Livepeer } from "@livepeer/ai"
+import { Button } from "@/components/ui/button"
+
+// Initialize Livepeer client
+const livepeerAI = new Livepeer({
+  httpBearer: ""
+})
 
 // Define the generation states
 type GenerationState = {
@@ -57,6 +64,12 @@ const states: GenerationState[] = [
   }
 ]
 
+interface ImageGeneration {
+  url: string
+  seed: number
+  nsfw: boolean
+}
+
 interface ImagePrompt {
   segment: string
   prompt: string
@@ -64,6 +77,7 @@ interface ImagePrompt {
     start: number
     end: number
   }
+  generatedImage?: ImageGeneration
 }
 
 export default function Step4Component({ 
@@ -82,59 +96,101 @@ export default function Step4Component({
 
   // Function to generate image prompt for a text segment
   const generateImagePrompt = async (text: string, timestamp: { start: number, end: number }) => {
-    console.log('~~~~~Pop~~~~~~ Generating image prompt for:', text)
+    console.log('🎨 Generating image prompt for text:', text)
+    console.log('⏱️ Timestamp:', timestamp)
     
     try {
-      const systemMessage = "You are an expert at converting narrative text into detailed image generation prompts. Create vivid, descriptive prompts that capture the essence of the narrative in a visual way. Focus on style, mood, composition, and important details."
-      
-      const promptText = `Convert this narrative text into a detailed image generation prompt. Focus on visual elements, style, and mood: "${text}"`
-
-      const formData = new URLSearchParams()
-      formData.append('prompt', promptText)
-      formData.append('model_id', 'gpt-4') // or your preferred model
-      formData.append('system_msg', systemMessage)
-      formData.append('temperature', '0.7')
-      formData.append('max_tokens', '256')
-
-      const response = await fetch('https://dream-gateway.livepeer.cloud/llm', {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_LIVEPEER_API_KEY}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`
         },
-        body: formData
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert at converting narrative text into detailed image generation prompts. Create vivid, descriptive prompts that capture the essence of the narrative in a visual way. Focus on style, mood, composition, lighting, and important details. Keep the prompt concise but detailed."
+            },
+            {
+              role: "user",
+              content: `Convert this narrative text into a detailed image generation prompt that could be used with DALL-E or Midjourney. Focus on visual elements, style, and mood. Text: "${text}"`
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 150
+        })
       })
 
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.statusText}`)
+      }
+
       const data = await response.json()
-      console.log('~~~~~Pop~~~~~~ LLM Response:', data)
+      console.log('🤖 OpenAI Response:', data)
+      
+      const generatedPrompt = data.choices[0].message.content
+      console.log('✨ Generated Image Prompt:', generatedPrompt)
 
       return {
         segment: text,
-        prompt: data.response,
+        prompt: generatedPrompt,
         timestamp
       }
     } catch (error) {
-      console.error('~~~~~Pop~~~~~~ Error generating image prompt:', error)
+      console.error('❌ Error generating image prompt:', error)
+      return null
+    }
+  }
+
+  // Function to generate image from prompt using Livepeer
+  const generateImageFromPrompt = async (prompt: string) => {
+    console.log('🖼️ Generating image for prompt:', prompt)
+
+    try {
+      const result = await livepeerAI.generate.textToImage({
+        prompt,
+        modelId: "SG161222/RealVisXL_V4.0_Lightning",
+        width: 1024,
+        height: 1024
+      })
+
+      console.log('📷 Livepeer Image Response:', result.images)
+
+      return result.images?.[0] || null
+    } catch (error) {
+      console.error('❌ Error generating image:', error)
       return null
     }
   }
 
   // Function to process transcription segments
   const processTranscriptionSegments = async (segments: Array<{text: string, start: number, end: number}>) => {
-    console.log('~~~~~Pop~~~~~~ Processing transcription segments:', segments)
+    console.log('📝 Processing transcription segments:', segments)
     
     const prompts = []
     for (const segment of segments) {
+      console.log('🎯 Processing segment:', segment)
       const prompt = await generateImagePrompt(segment.text, {
         start: segment.start,
         end: segment.end
       })
       if (prompt) {
+        console.log('✅ Generated prompt for segment:', prompt)
+
+        // Generate image for the prompt
+        const image = await generateImageFromPrompt(prompt.prompt)
+        if (image) {
+          console.log('✅ Generated image for prompt:', image)
+          prompt.generatedImage = image
+        }
+
         prompts.push(prompt)
       }
     }
 
-    console.log('~~~~~Pop~~~~~~ Generated image prompts:', prompts)
+    console.log('🎬 All generated image prompts with images:', prompts)
     setImagePrompts(prompts)
     return prompts
   }
@@ -300,26 +356,62 @@ export default function Step4Component({
             })}
           </div>
 
-          {/* Debug information */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 space-y-4">
-              {transcription && (
-                <div className="p-4 bg-muted rounded-lg text-sm">
-                  <h3 className="font-semibold mb-2">Debug: Transcription</h3>
-                  <pre className="whitespace-pre-wrap">
-                    {JSON.stringify(transcription, null, 2)}
-                  </pre>
+          {/* Display generated images */}
+          {imagePrompts.length > 0 && (
+            <div className="space-y-6">
+              <h3 className="font-semibold">Generated Images</h3>
+              {imagePrompts.map((prompt, index) => (
+                <div key={index} className="p-4 bg-muted rounded-lg space-y-4">
+                  <div>
+                    <h4 className="font-medium">Segment {index + 1}</h4>
+                    <p className="text-sm text-muted-foreground mt-1">{prompt.segment}</p>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium">Generated Prompt</h4>
+                    <p className="text-sm text-muted-foreground mt-1">{prompt.prompt}</p>
+                  </div>
+                  
+                  {prompt.generatedImage && (
+                    <div>
+                      <h4 className="font-medium mb-2">Generated Image</h4>
+                      <div className="relative aspect-square rounded-lg overflow-hidden">
+                        <img
+                          src={prompt.generatedImage.url}
+                          alt={`Generated image for segment ${index + 1}`}
+                          className="object-cover w-full h-full"
+                        />
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        Seed: {prompt.generatedImage.seed}
+                        {prompt.generatedImage.nsfw && (
+                          <span className="ml-2 text-destructive">NSFW</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="text-xs text-muted-foreground">
+                    Timestamp: {prompt.timestamp.start}s - {prompt.timestamp.end}s
+                  </div>
                 </div>
-              )}
-              
-              {imagePrompts.length > 0 && (
-                <div className="p-4 bg-muted rounded-lg text-sm">
-                  <h3 className="font-semibold mb-2">Debug: Image Prompts</h3>
-                  <pre className="whitespace-pre-wrap">
-                    {JSON.stringify(imagePrompts, null, 2)}
-                  </pre>
-                </div>
-              )}
+              ))}
+            </div>
+          )}
+
+          {/* Add this after the generated images section, just before closing the main Card div */}
+          {imagePrompts.length > 0 && (
+            <div className="mt-8 flex justify-end">
+              <Button 
+                onClick={() => {
+                  console.log('🎬 Moving to final step')
+                  onComplete()
+                }}
+                className="gap-2"
+              >
+                Continue to Final Step
+                <ArrowUpRight className="w-4 h-4" />
+              </Button>
             </div>
           )}
         </div>
